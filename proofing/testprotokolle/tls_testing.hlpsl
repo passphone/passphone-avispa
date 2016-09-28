@@ -1,0 +1,56 @@
+role alice(  	A, B : agent,
+				SND, RCV : channel(dy),
+				Sid : text)
+	played_by A def=
+	local
+		Step : nat,
+		Na, Nb : text, % random number
+		Pa : text % cryptosuite offer
+
+		init Step := 0
+	transition
+		0. Step  = 0 /\ RCV(start) =|>
+		   Step':= 2 /\ Na' := new()
+		   			 /\ Pa' := new()
+		   			 /\ SND(A.Na'.Sid.Pa') % CLIENT_HELLO
+end role
+
+role bob(		A, B : agent,
+				SND, RCV : channel(dy))
+	played_by B def=
+	local
+		Step : nat,
+		Na, Nb : text, % random number
+		Sid : text, % session id
+		Pa : text % cryptosuite
+		init Step := 1
+	transition
+		1. Step  = 1 /\ RCV(A.Na'.Sid.Pa') =|>
+		   Step':= 3 /\ Nb' := new()
+		   			 /\ 
+end role
+
+role session(A, B : agent)
+	def=
+	local
+		SA, RA, SB, RB : channel(dy),
+		Sid : text
+	composition
+		alice(A,B,SA,RA,Sid) /\ bob(A,B,SB,RB)
+end role
+
+role environment()
+	def=
+	const
+		a,b : agent,
+		test : protocol_id
+	intruder_knowledge = {a,b}
+	composition
+		session(a,b) /\ session(i,b) /\ session(a,i)
+end role
+
+goal
+	authentication_on test
+end goal
+
+environment()

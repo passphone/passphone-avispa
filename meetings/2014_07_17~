@@ -1,0 +1,12 @@
+K umbenennen in TLS
+bei TLS wird noch Signiert nach Verschlüsselung
+.ota einbauen um over the air zu simmulieren
+
+BootPT mal sicher und nicht authentisch machen - auch mal unsicher machen
+überall die signaturen wegnehmen? - mal das ganze protokoll ohne signaturen darstellen
+
+Simmulation A schick B Passwort
+Pairing Example suchen und testen - schon in Avispa testsuite?
+
+witness - was macht das? wie sind die parameter aufgebaut
+was fürn typ ist protocol_id?

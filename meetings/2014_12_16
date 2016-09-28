@@ -1,0 +1,25 @@
+Stackexchange, crypto, security   --> nachfragen
+Cl-ATSE Doku
+Protokoll noch weiter herunter brechen
+
+Auth reduzieren auf 2 steps und schritt für schritt steps hinzufügen - done, hat keine Auswirkung ab Step 4
+ProVerif, CryptoVerif, Scyther     - Doku standard? IF oder HLPSL
+
+
+
+ProVerif:
+- 113 Seiten Manual http://prosecco.gforge.inria.fr/personal/bblanche/proverif/manual.pdf
+- Google Scholar: 1170 Einträge 2001 - 2011
+- Input Language: Horn Clauses oder language simmilar to applied pi-calculus
+
+
+Scyther
+- 52 Seiten Manual https://github.com/cascremers/scyther/blob/master/gui/scyther-manual.pdf
+- Github Projekt (letztes Update Juli 2014) https://github.com/cascremers/scyther
+    * gibt auch Beispiele dazu
+- Google Scholar: 595 Einträge 2006 - 2009
+- Input Language: C/Java-like syntax
+
+CryptoVerif
+- Google Scholar: 252 Einträge 2007 - 2011
+- Kein wirkliches Manual vorhanden

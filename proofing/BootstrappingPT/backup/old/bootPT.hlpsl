@@ -1,0 +1,191 @@
+% --- Bootstrapping PT ---
+
+role pt(    PT, T, PM : agent,
+            SND, RCV : channel(dy),
+            TLS, Air : symmetric_key)
+    played_by PT def=
+    local
+        Step : nat,
+        IDpm, IDpt, IDt, Nt, Protocol, Kppt : text,
+        K : symmetric_key,
+        X : message
+    init Step := 1
+    transition
+    1. Step = 1 /\ RCV(start)
+        =|>
+        % Simulate a new IDpm and Kppt
+        IDpm' := new()
+        /\ Kppt' := new()
+        % Make sure that the new key and the new IDpm are authentic
+        /\ witness(PT,T,kppt_pt_t,Kppt')
+        /\ witness(PT,T,idpm_pt_t,IDpm')
+        % Send message to T
+        /\ SND({{Protocol.Step.IDpt.Kppt'.IDpm'}_PT}_TLS)
+        /\ Step' := 3
+    % Receive the message X from PM over the air
+    3. Step = 3 /\ RCV({X'}_Air)
+        =|>
+        % Make sure that X is authentic
+        witness(PT,T,x_pt_t,X')
+        % Send the received X to T
+        /\ SND({{Protocol.Step.IDpt.X'}_PT}_TLS)
+        /\ Step' := 5
+    5. Step = 5 /\ RCV({{Protocol.Step'.IDt.IDpt'.K'}_T}_TLS)
+        =|>
+        % make sure that received idpt and K were authentic
+        request(PT,T,idpt_t_pt,IDpt')
+        /\ request(PT,T,k_t_pt,K')
+end role
+
+role t(     PT, T, PM : agent,
+            SND, RCV : channel(dy),
+            TLS : symmetric_key)
+    played_by T def=
+    local
+        Step : nat,
+        IDpm, IDpt, IDt, Nt, Nttrans, Protocol, Tmp, Kppt : text,
+        K : symmetric_key,
+        X : message,
+        Hash : hash_func
+    init Step := 1
+    transition
+    % Receive the message from PT
+    1. Step = 1 /\ RCV({{Protocol.Step.IDpt.Kppt'.IDpm'}_PT}_TLS)
+        =|>
+        % Make sure that received key and IDpm were authentic
+        request(T,PT,kppt_pt_t,Kppt')
+        /\ request(T,PT,idpm_pt_t,IDpm')
+        % Build a new nonce Nt
+        /\ Nt' := new()
+        /\ Step' := 2
+        % Build message X
+        /\ X' := {Protocol.Step'.IDt.Nt'}_T
+        % Make sure that the new X is authentic
+        /\ witness(T,PM,x_t_pm,X')
+        % Send the message X to PM
+        /\ SND(X')
+        /\ Step' := 3
+    % Receive the message with X from PT and check if Nt in X is the Nt created by T
+    3. Step = 3 /\ RCV({{Protocol.Step.IDpt.X'}_PT}_TLS)
+        =|>
+        % Make sure that the received X was authentic
+        request(T,PT,x_pt_t, X')
+        % Generate a new nonce Nt
+        /\ Nt' := new()
+        % Hash this Nt to get IDpt
+        /\ IDpt' := Hash(Nt')
+        % Make sure that the new IDpt is authentic
+        /\ witness(T,PT,idpt_t_pt,IDpt')
+        /\ Step' := 5
+        % Build a new key K
+        /\ K' := new()
+        % Make sure that K is authentic
+        /\ witness(T,PT,k_t_pt,K')
+        % Send the message with the new IDpt and K to PT
+        /\ SND({{Protocol.Step'.IDt.IDpt'.K'}_T}_TLS)
+        /\ Step' := 7
+    7. Step = 7
+        =|>
+        % -- Rekeying and transfer ticket--
+        % Build a new nonce Nt for the rekeying ticket
+        Nt' := new()
+        /\ Step' := 1
+        % Make sure that Nt and Kppt are authentic
+        /\ witness(T,PM,nt_rek,Nt')
+        /\ witness(T,PM,kppt_rek,Kppt)
+        % Send the message with the rekeying ticket to PM
+        /\ SND({{Protocol.Step'.IDt.Nt'.Kppt}_T}_K)
+        /\ Step' := 8
+    8. Step = 8
+        =|>
+        % Build a nonce Nttrans for the transfer ticket
+        % (Identifier is Nttrans so that PM can separate the two ticket nonces)
+        Nttrans' := new()
+        /\ Step' := 1
+        % Make sure that Nttrans and Kppt are authentic
+        /\ witness(T,PM,nttrans_trans,Nttrans')
+        /\ witness(T,PM,kppt_trans,Kppt)
+        % Send the message with the transfer ticket to PM
+        /\ SND({{Protocol.Step'.IDt.Nttrans'.Kppt}_T}_K)
+        /\ Step' := 8
+end role
+
+role pm(    PT, T, PM : agent,
+            SND, RCV : channel(dy),
+            Air : symmetric_key)
+    played_by PM def=
+    local
+        Step : nat,
+        Protocol, IDt, Nt, Kppt, Nttrans : text,
+        K : symmetric_key,
+        X : message
+    init Step := 2
+    transition
+    % Receive the message X
+    2. Step = 2 /\ RCV(X')
+        =|>
+        request(PM,T,x_t_pm,X')
+        % Send the message X over the air to PT
+        /\ SND({X'}_Air)
+        /\ Step' := 5
+    % Receive the rekeying ticket
+    5. Step = 5 /\ RCV({{Protocol.Step'.IDt.Nt'.Kppt}_T}_K)
+        =|>
+        request(PM,T,nt_rek,Nt')
+        /\ request(PM,T,kppt_rek,Kppt)
+        /\ Step' := 6
+    % Receive the transfer ticket
+    6. Step = 6 /\ RCV({{Protocol.Step'.IDt.Nttrans'.Kppt}_T}_K)
+        =|>
+        request(PM,T,nttrans_trans,Nttrans')
+        /\ request(PM,T,kppt_trans,Kppt)
+end role
+
+role session(   PT, T, PM : agent,
+                TLS, Air : symmetric_key)
+    def=
+    local
+        SPT, RPT, ST, RT, SPM, RPM : channel(dy)
+    composition
+    % instantiate all roles
+    pt(PT,T,PM,SPT,RPT,TLS, Air) /\ t(PT,T,PM,ST,RT,TLS) /\ pm(PT,T,PM,SPM,RPM, Air)
+end role
+
+role enviroment()
+    def=
+    const
+        kppt_pt_t, 
+        idpm_pt_t, 
+        x_t_pm, 
+        x_pt_t, 
+        k_t_pt, 
+        idpt_t_pt, 
+        nt_rek, 
+        kppt_rek, 
+        nttrans_trans, 
+        kppt_trans 
+            : protocol_id,
+        tls, air : symmetric_key,
+        pt, t, pm : agent
+    % Intruder only has knowledge of the involved roles
+    intruder_knowledge = {pt, t, pm}
+    composition
+    session(pt,t,pm,tls,air)
+    %/\ session(pt,t,i,tls,air)
+end role
+
+goal
+    % Check the authenticies
+    authentication_on kppt_pt_t 
+    authentication_on idpm_pt_t 
+    %authentication_on x_t_pm % This mail is not safe
+    authentication_on x_pt_t 
+    authentication_on k_t_pt
+    authentication_on idpt_t_pt
+    authentication_on nt_rek
+    authentication_on kppt_rek
+    authentication_on nttrans_trans
+    authentication_on kppt_trans
+end goal
+
+enviroment()

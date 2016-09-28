@@ -1,0 +1,164 @@
+% --- Authentication ---
+
+role ps(    PS, PM, S, T : agent,
+            TLSsps, TLStps : symmetric_key,
+            SND, RCV : channel(dy))
+    played_by PS def=
+    local
+        Step : nat,
+        Protocol, Hpt, Ns, Hs, Nt : text,
+        IDs, IDps, IDt : text,
+        X, Y : message,
+        Hash : hash_func
+    init Step := 1
+    transition
+        % Recevie a message from S
+        2. Step = 1 /\ RCV({Protocol.Step.IDs'.Hpt'.Ns'}_TLSsps)
+            =|>
+            % Make sure that Ns was authentic
+            request(PS,S,ns_s_ps,Ns')
+            % Hash Ns and IDs to get Hs
+            /\ Hs' := Hash(Ns'.IDs')
+            % Make sure that Hs is authentic
+            /\ witness(PS,T,hs_ps_t,Hs')
+            /\ Step' := 2
+            % Send Hpt and Hs to T
+            /\ SND({Protocol.Step'.IDps.Hpt'.Hs'}_TLStps)
+            /\ Step' := 3
+        % Receive message X from T
+        4. Step = 3 /\ RCV({X'}_TLStps)
+            =|>
+            % Send X back to T to revoke
+            SND({Protocol.Step.IDps.X'}_TLStps)
+end role
+
+role pm(    PS, PM, S, T : agent,
+            SND, RCV : channel(dy))
+    played_by PM def=
+    local
+        Step : nat,
+        Protocol, Hpt, Hs, Nt : text,
+        IDs, IDps, IDt : text,
+        X, Y : message
+    init Step := 6
+    transition
+        % Receive a message from PS with revoke ticket
+        6. Step = 6 /\ RCV({Protocol.Step.IDt.X'}_T)
+            =|>
+            Step' := 7
+            
+end role
+
+role s(     PS, PM, S, T : agent,
+            TLSsps : symmetric_key,
+            SND, RCV : channel(dy))
+    played_by S def=
+    local
+        Step : nat,
+        Protocol, Hpt, Ns, Hs, Nt : text,
+        IDs, IDps, IDt : text,
+        X, Y : message,
+        Hash : hash_func
+    init Step := 1
+    transition
+        1. Step = 1 /\ RCV(start)
+            =|>
+            % Build a new nonce Ns and simmulate an IDs and an Hpt
+            Ns' := new()
+            /\ IDs' := new()
+            /\ Hpt' := new()
+            % Hash Ns and IDs to get the Hs
+            /\ Hs' := Hash(Ns'.IDs')
+            % Make sure that the new Ns, IDs and Hpt are authentic
+            /\ witness(S,PS,ns_s_ps,Ns')
+            /\ witness(S,T,hpt_s_t,Hpt')
+            % Send Hpt and Ns to PS
+            /\ SND({Protocol.Step.IDs'.Hpt'.Ns'}_TLSsps)
+end role
+
+role t(     PS, PM, S, T : agent,
+            TLStps : symmetric_key,
+            SND, RCV : channel(dy))
+    played_by T def=
+    local
+        Step : nat,
+        Protocol, Hpt, Ns, Hs, Nt : text,
+        IDs, IDps, IDt : text,
+        X, Y : message
+    init Step := 2
+    transition
+        % Receive a message from PS
+        3. Step = 2 /\ RCV({Protocol.Step'.IDps.Hpt'.Hs'}_TLStps)
+            =|>
+            % Make sure that Hpt and Hs were authentic
+            request(T,PS,hs_ps_t,Hs')
+            /\ request(T,S,hpt_s_t,Hpt')
+            % Build a new nonce Nt
+            /\ Nt' := new()
+            % Make sure that Nt, Hs and Hpt are authentic
+            /\ witness(T,T,nt_t_t,Nt')
+            /\ witness(T,T,hs_t_t,Hs')
+            /\ witness(T,T,hpt_t_t,Hpt')
+            /\ Step' := 3
+            % Build message X with Hpt, Hs and Nt
+            /\ X' := {Protocol.Step'.IDt.Hpt'.Hs'.Nt'}_T
+            % Send message X to PS
+            /\ SND({X'}_TLStps)
+            /\ Step' := 5
+        % Receive X from PS and check if Hs and Hpt are correct
+        6. Step = 5 /\ RCV({Protocol.Step'.IDps.X'}_TLStps)
+            =|>
+            request(T,T,nt_t_t,X'(Nt))
+            /\ request(T,T,hs_t_t,X'(Hs))
+            /\ request(T,T,hpt_t_t,X'(Hpt))
+            % Send Y to PM
+            /\ SND({Protocol.Step.IDt.X'}_T)
+end role
+
+role session(   S, PS, T, PM : agent,
+                TLSsps, TLStps : symmetric_key)
+    def=
+    local
+        SS, RS, SPS, RPS, ST, RT, SPM, RPM : channel(dy)
+    composition
+    % instantiate all roles
+    s(PS, PM, S, T, TLSsps, SS, RS)
+    /\ ps(PS, PM, S, T, TLSsps, TLStps, SPS, RPS)
+    /\ t(PS, PM, S, T, TLStps, ST, RT)
+    /\ pm(PS, PM, S, T, SPM, RPM)
+end role
+
+role enviroment()
+    def=
+    const
+        ns_s_ps,
+        hpt_s_t,
+        hs_ps_t,
+        nt_t_t,
+        hs_t_t,
+        hpt_t_t
+            : protocol_id,
+        tlssps, tlstps : symmetric_key,
+        s, ps, t, pm : agent
+    % Intruder only has knowledge of the involved roles
+    intruder_knowledge = {s, ps, t, pm}
+    composition
+        session(s,ps,t,pm,tlssps,tlstps)
+        % Intruder cannot be S or T because of TLS
+        % Intruder fakes to be PM or PS
+        %/\ session(s,ps,t,i,tlssps,tlstps,tlstpt,air,initsend)
+        %/\ session(s,i,t,pm,tlssps,tlstps,tlstpt,air,initsend)
+end role
+
+
+goal
+    % Check the authenticy of Ns, Hs, IDs, X and Nt
+    authentication_on ns_s_ps
+    authentication_on hpt_s_t
+    authentication_on hs_ps_t
+    authentication_on nt_t_t
+    authentication_on hs_t_t
+    authentication_on hpt_t_t
+end goal
+
+enviroment()

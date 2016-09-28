@@ -1,0 +1,10 @@
+TODO:
+- Avispa Doku nach Witness-Request durchsuchen
+- Protokoll Include in der Doku suchen
+- gibt es authentisierte Verschlüsselung in Avipsa?
+- Weak Request - Weak Authentication -> was macht das? | ausprobieren
+
+- Chanel-keys auf secret setzten
+	* BootPS
+	* BootPT
+	* Auth

@@ -1,0 +1,73 @@
+% pt schickt t eine frische nonce symmetrisch verschlüsselt oder unverschlüsselt
+% - verschlüsselt => authentisierung erfolgreich
+% - unverschlüsselt => authentisierung fehlgeschlagen
+role pt(PT, T : agent,
+        Ktpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by PT def=
+    local
+        Npt : text,
+        State : nat
+    init State := 1
+    transition
+    1. State = 1 /\ RCV(start)
+        =|>
+        State' := 3
+        /\ Npt' := new()
+        %/\ SND({Npt'}_Ktpt)
+        /\ SND(Npt') % unsafe
+        /\ witness(PT,T,nonce_pt_t,Npt')
+        
+end role
+
+role t(PT, T : agent,
+        Ktpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by T def=
+    local
+        Npt : text,
+        State : nat
+    init State := 2
+    transition
+    %2. State = 2 /\ RCV({Npt'}_Ktpt)
+    2. State = 2 /\ RCV(Npt') % unsafe
+        =|>
+        State' := 4
+        /\ request(T,PT,nonce_pt_t,Npt')
+end role
+
+
+
+role session(PT, T : agent,
+        Ktpt : symmetric_key)
+    def=
+    local
+        SPT, RPT, ST, RT : channel(dy)
+    composition
+    pt(PT,T,Ktpt,SPT,RPT) /\ t(PT,T,Ktpt,ST,RT)
+end role
+
+role enviroment()
+    def=
+    const
+        ktpt : symmetric_key,
+        nonce_pt_t : protocol_id,
+        pt, t : agent
+    intruder_knowledge = {pt,t}
+    composition
+    session(pt,t,ktpt)
+    %/\ session(i, t, ktpt)
+end role
+
+goal
+    authentication_on nonce_pt_t
+end goal
+
+enviroment()
+
+
+
+
+
+
+

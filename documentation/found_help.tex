@@ -1,0 +1,24 @@
+\chapter{Informations}
+\section{HLPSL}
+\subsection{Channels}
+\begin{itemize}
+\item dy = dolev-yao = allows the intruder to change or to fake messages
+\item ota = over the air = disallows the intruder to change or to fake messages (in AVISPA 1.1 not implemented)
+\end{itemize}
+
+\subsection{Syntax}
+\begin{itemize}
+\item to change a variable a ' has to be added to specify changes (e.g. Step' := 2)
+\item =|> is a conditional execution of a given right hand side (only executed when left hand side satisfied)
+\item -{}-|> is a unconditional execution of a given right hand side (after rhs execution: lhs execution)
+\item an appended \_K on message m is an encoding of m if K is a key otherwise if K is an agent m is signed by K
+\item an appended .A on a message is a concatenation (e.g. A.B.C.D)
+\item protocol\_id = variable pointing on a specific security parameter to identify several security parameters
+\end{itemize}
+
+\subsection{Proofing}
+\begin{itemize}
+\item secret(N,n,{A,B}) declares that N should only be known by A and B
+\item witness(A,B,n,N) declares that A created N and sent it to B
+\item request(B,A,n,N) B checks if N is the message A has declared in his witness
+\end{itemize}

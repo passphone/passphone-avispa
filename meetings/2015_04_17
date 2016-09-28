@@ -1,0 +1,8 @@
+TODO:
+- Aufräumen - check
+- TLS Protokoll review / macht es das was wir wollen? - ja
+- shellscript/makefile, um tls in unsere protokolle einzubauen
+- erster Schritt von BootPS ins Avispa TLS Protokoll schreiben - done=Save
+
+Notes:
+- Wo macht es Sinn auf Authentizität zu prüfen?

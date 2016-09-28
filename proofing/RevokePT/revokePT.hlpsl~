@@ -1,0 +1,90 @@
+% --- Revoke PT ---
+
+role pt(PT, PM, T : agent,
+        TLStpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by PT def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 1
+    transition
+    1. Step = 1 /\ RCV(start)
+        =|>
+        % simmulate a registered IDpt
+        IDpt' := new()
+        % Send the IDpt to T
+        /\ SND({{Protocol.Step.IDpt'}_PT}_TLStpt)
+        % Make sure that IDpt is authentic
+        /\ witness(PT,T,idpt_pt_t,IDpt')
+        /\ witness(PT,PM,idpt_pt_pm,IDpt')
+        /\ Step' := 3
+end role
+
+role pm(PT, PM, T : agent,
+        SND, RCV : channel(dy))
+    played_by PM def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 2
+    transition
+    % Receive IDpt and Nt from T
+    2. Step = 2 /\ RCV({Protocol.Step'.IDt.IDpt'.Nt'}_T)
+        =|>
+        % Make sure that IDpt is authentic
+        request(PM,PT,idpt_pt_pm,IDpt')
+        /\ Step' := 4
+end role
+
+role t(PT, PM, T : agent,
+        TLStpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by T def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 1
+    transition
+    % Receive IDpt from PT
+    1. Step = 1 /\ RCV({{Protocol.Step.IDpt'}_PT}_TLStpt)
+        =|>
+        % Make sure that IDpt was authentic
+        request(T,PT,idpt_pt_t,IDpt')
+        /\ Step' := 4
+        % Build new nonce Nt
+        /\ Nt' := new()
+        % Send IDpt and Nt to PM
+        /\ SND({Protocol.Step'.IDt.IDpt'.Nt'}_T)
+end role
+
+role session(PT, T, PM : agent,
+            Tlstpt : symmetric_key)
+    def=
+    local
+        SPT, RPT, ST, RT, SPM, RPM : channel(dy)
+    composition
+    % instantiate all roles
+    pt(PT,PM,T,Tlstpt,SPT,RPT)
+    /\ t(PT,PM,T,Tlstpt,SPT,RPT)
+    /\ pm(PT,PM,T,SPT,RPT)
+end role
+
+role enviroment()
+    def=
+    const
+        idpt_pt_t, idpt_pt_pm : protocol_id,
+        tlstpt : symmetric_key,
+        pt, t, pm : agent
+    % Intruder only has knowledge of the involved roles
+    intruder_knowledge = {pt, t, pm}
+    composition
+        session(pt,t,pm,tlstpt)
+end role
+
+goal
+    authentication_on idpt_pt_t
+    authentication_on idpt_pt_pm
+end goal
+
+enviroment()

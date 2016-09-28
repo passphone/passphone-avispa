@@ -1,0 +1,57 @@
+\chapter{Test on deactivating TLS}
+
+\textbf{BootPT}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+BootPT \#1       & PT->T           & 1    & unsafe & attack on ID$_{PM}$ between PT and T \\
+& & &                                     & and attack on K$^P_{PT}$ between PT and T\\ \hline
+BootPT \#4       & PT->T, T->PT    & 4+5  & unsafe & attack on K between T and PT \\
+& & &                                     & and attack on ID$_{PT}$ between T and PT \\ \hline
+\end{tabular}
+\\ \\
+\textbf{BootPS}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+BootPS \#1       & S->PS           & 1    & unsafe & attack on N$_S$ between S and PS \\ \hline
+BootPS \#2       & PS->T, T->PS    & 2+3  & unsafe & attack on H$_S$ between PS and T \\ \hline
+BootPS \#4       & PT->T           & 5    & safe   & \\ \hline
+BootPS \#5       & T->PS           & 6    & safe   & \\ \hline
+BootPS \#6       & PS->S           & 7    & safe   & \\ \hline
+\end{tabular}
+\\ \\
+\textbf{Auth}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+Auth \#1         & S->PS           & 1    & unsafe & attack on N$_S$ between S and PS \\ \hline
+Auth \#2         & PS->T, T->PS    & 2+3  & unsafe & attack on H$_S$ between PS and T \\
+& & &                                              & and attack on H$_{PT}$ between PS and T \\ \hline
+Auth \#4         & PT->T           & 5    & safe   & \\ \hline
+Auth \#5         & T->PS           & 6    & safe   & \\ \hline
+Auth \#6         & PS->S           & 7    & safe   & \\ \hline
+\end{tabular}
+\\ \\
+\textbf{RevokePS}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+Auth \#1         & S->PS           & 1    & unsafe & same as in Auth \#1 \\ \hline
+Auth \#2         & PS->T, T->PS    & 2+3  & unsafe & same as in Auth \#2 \\ \hline
+RevokePS \#3     & PS->T           & 4    & safe   & \\ \hline
+\end{tabular}
+\\ \\
+\textbf{RevokePT}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+RevokePT \#1     & PT->T           & 1    & unsafe   & attack on unencrypted email in Step 2\\ \hline
+\end{tabular}
+\\ \\
+\textbf{Rekeying}\\
+\begin{tabular}[h]{| l | l | l | l | l |}
+\hline
+protocol session & TLS off between & step & result & attack \\ \hline
+Rekeying \#2     & PT->T, T->PT    & 2+3  & unsafe   & secrecy break of K in Step 3 \\ \hline
+\end{tabular}

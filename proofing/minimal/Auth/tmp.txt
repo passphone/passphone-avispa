@@ -1,0 +1,114 @@
+
+----------------
+  AtSe Summary  
+----------------
+
+  Protocol file: /opt/avispa-1.1/testsuite/results/new.if
+  Attack found : YES
+
+  Analysed   : 4 states
+  Reachable  : 1 states
+  Translation: 0.02 seconds
+  Computation: 0.00 seconds
+
+
+---------------------------------------------
+            Internal System State            
+  (initial state after reading the if file)  
+---------------------------------------------
+
+Intruder state :
+----------------
+
+Intruder Knowledge :  start i h t p s 
+ Unforgeable terms :  k_s_p k_p_t
+
+
+Interpreted protocol specification :
+------------------------------------
+
+Role t played by (t,13):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(21)}_k_p_t
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(21).n21(Nt)}_t}_k_p_t
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(22).Nt(22)}_t}_k_p_t
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(22)}_t}_k_p_t
+|    & Witness(t,s,yTS,{protocol.5.dummy_nonce.dummy_nonce.Hs(22)}_t);
+
+Role s played by (s,11):
+| start => {protocol.1.dummy_nonce.dummy_nonce.n17(Ns)}_k_s_p
+| {protocol.6.dummy_nonce.Y(18)}_k_s_p => ()
+|    & Request(s,t,yTS,Y(18));
+
+Role t played by (t,9):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(13)}_k_p_t
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(13).n13(Nt)}_t}_k_p_t
+|    & Witness(t,p,ntTP,n13(Nt));  Request(t,p,hsPT,Hs(13));
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(14).Nt(14)}_t}_k_p_t
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(14)}_t}_k_p_t
+|    & Witness(t,p,yTP,{protocol.5.dummy_nonce.dummy_nonce.Hs(14)}_t);
+|    & Request(t,p,ntPT,Nt(14));
+
+Role p played by (p,8):
+| {protocol.1.dummy_nonce.dummy_nonce.Ns(11)}_k_s_p
+|   => {protocol.2.dummy_nonce.dummy_nonce.{Ns(11).dummy_nonce}_h}_k_p_t
+|    & Witness(p,t,hsPT,{Ns(11).dummy_nonce}_h);
+
+Role t played by (t,5):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(7)}_k_p_t
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(7).n7(Nt)}_t}_k_p_t
+|    & Witness(t,p,ntTP,n7(Nt));  Request(t,p,hsPT,Hs(7));
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(8).Nt(8)}_t}_k_p_t
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(8)}_t}_k_p_t
+|    & Witness(t,s,yTS,{protocol.5.dummy_nonce.dummy_nonce.Hs(8)}_t);
+|    & Witness(t,p,yTP,{protocol.5.dummy_nonce.dummy_nonce.Hs(8)}_t);
+|    & Request(t,p,ntPT,Nt(8));
+
+Role p played by (p,4):
+| {protocol.1.dummy_nonce.dummy_nonce.Ns(5)}_k_s_p
+|   => {protocol.2.dummy_nonce.dummy_nonce.{Ns(5).dummy_nonce}_h}_k_p_t
+|    & Witness(p,t,hsPT,{Ns(5).dummy_nonce}_h);  Request(p,s,nsPS,Ns(5));
+
+Role s played by (s,3):
+| start => {protocol.1.dummy_nonce.dummy_nonce.n1(Ns)}_k_s_p
+| {protocol.6.dummy_nonce.Y(2)}_k_s_p => ()
+|    & Request(s,t,yTS,Y(2));
+
+
+Some Remarks :
+--------------
+
+- The syntax of protocol steps is
+   "Received Msg" => "Sent Msg"  [Equalities] & Inequalities & IF facts
+- A Role is a tree where steps are unary nodes and choice points are n-ary nodes
+- The Initial System state is the state of cl-atse at the begining of the search
+  for attacks, and represents both the intruder and honest participants state.
+- See the cl-atse's subsection in the user-manual for more details.
+
+
+--------------------------------------------------
+                Attack Description                
+ (the list of protocol steps followed by cl-atse) 
+--------------------------------------------------
+
+Short attack description :
+--------------------------
+
+ Kind of attack:  Authentication on (p,s,nsPS,n17(Ns))
+   Substitution:  [ Ns(5)=n17(Ns) ]
+  Compact trace:  (s,11) (s,3) (p,4) 
+
+
+Detailed attack description :
+-----------------------------
+
+ i -> (s,11):  start
+ (s,11) -> i:  {protocol.1.dummy_nonce.dummy_nonce.n17(Ns)}_k_s_p
+
+ i -> (s,3):  start
+ (s,3) -> i:  {protocol.1.dummy_nonce.dummy_nonce.n1(Ns)}_k_s_p
+
+ i -> (p,4):  {protocol.1.dummy_nonce.dummy_nonce.n17(Ns)}_k_s_p
+ (p,4) -> i:  {protocol.2.dummy_nonce.dummy_nonce.{n17(Ns).dummy_nonce}_h}_k_p_t
+              & Witness(p,t,hsPT,{n17(Ns).dummy_nonce}_h);
+              & Request(p,s,nsPS,n17(Ns));
+

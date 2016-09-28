@@ -1,0 +1,12 @@
+TODO:
+-------------------
+- Bootstrap testen ohne witness-request
+- TLS test
+
+TLS
+-------------------
+Simples TLS Protokoll testen (TLS Handshake) mit einfacher Message zum Testen.
+
+Needham-Schroeter
+-------------------
+witness-request macht am Anfang keinen Sinn, da sich Eve als Bob ausgeben kann und die erste Message von Alice im Klartext lesen kann. Avispa findet heraus, dass Eve Na austauschen kann und bricht den durchlauf ab und gibt den Fehler aus, obwohl der check auf die Nonce erst später stattfindet

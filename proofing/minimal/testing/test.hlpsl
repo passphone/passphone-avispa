@@ -1,0 +1,58 @@
+role s(
+		S, P : agent,
+		SND, RCV : channel(dy),
+		K : symmetric_key)
+	played_by S def=
+	local
+		Step : nat,
+		N : text
+		init Step := 0
+	transition
+	0. Step  = 0 /\ RCV(start) =|>
+	   Step':= 3 /\ N' := new()
+	   			 /\ SND({{N'}_S}_K)
+	   			 /\ witness(S,P,nSP,N')
+end role
+
+role p(
+		S, P : agent,
+		SND, RCV : channel(dy),
+		K : symmetric_key)
+	played_by P def=
+	local
+		Step : nat,
+		N : text
+		init Step := 1
+	transition
+	1. Step  = 1 /\ RCV({{N'}_S}_K) =|>
+	   Step':= 3 /\ request(P,S,nSP,N')
+end role
+
+role session(
+		S, P : agent,
+		K : symmetric_key)
+	def=
+	local
+		SS, RS, SP, RP : channel(dy)
+	composition
+		s(S,P,SS,RS,K) /\ p(S,P,SP,RP,K)
+end role
+
+role environment()
+	def=
+	const
+		s, p : agent,
+		k : symmetric_key,
+		nSP : protocol_id
+	intruder_knowledge={s,p}
+	composition
+		   session(s,p,k)
+		/\ session(i,p,k)
+		%/\ session(s,i,k)
+end role
+
+goal
+	authentication_on nSP
+end goal
+
+environment()

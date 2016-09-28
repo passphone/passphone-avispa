@@ -1,0 +1,13 @@
+Auth Vollständig Proofen
+
+
+
+Frage Stellen: how to receive Message objects?
+
+Y : message
+....
+Y':= {Na.Nb.IDa}_A
+SND({Y'}_kb)
+....
+RCV({Y'}_kb)
+hash':=(Y'(Na).Y'(Nb))

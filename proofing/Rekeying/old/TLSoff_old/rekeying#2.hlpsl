@@ -1,0 +1,122 @@
+role p(P, PT, PM, T : agent,
+        Air, Initsend : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by P def=
+    local
+        Step : nat,
+        Protocol, IDt, Nt : text,
+        X : message,
+        Kppt : public_key
+    init
+        Step := 1
+    transition
+    1. Step = 1 /\ RCV(start)
+        =|>
+        Nt' := new()
+        /\ IDt' := new()
+        /\ Kppt' := new()
+        /\ X' := {Protocol.IDt'.Nt'.Kppt'}_T
+        /\ SND({X'}_Initsend)
+        /\ witness(P,PT,idt_p_pt,IDt')
+        /\ SND({X'}_Air)
+end role
+
+role pt(P, PT, PM, T : agent,
+        Air, Tlstpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by PT def=
+    local
+        Step : nat,
+        Nt, IDt, IDpt, Protocol : text,
+        Hash : hash_func,
+        X : message,
+        Kppt : public_key
+    init Step := 1
+    transition
+    1. Step = 1 /\ RCV({X'}_Air)
+        =|>
+        request(PT,P,idt_p_pt,X'(IDt))
+        /\ Kppt' := new()
+        /\ Step' := 2
+        /\ SND({Protocol.Step'.Kppt'.X'}_PT)
+        /\ witness(PT,T,kppt_pt_t,Kppt')
+        /\ Step' := 3
+    3. Step = 3 /\ RCV({Protocol.Step'.IDt.IDpt'}_T)
+        =|>
+        request(PT,T,idpt_t_pt,IDpt')
+        /\ Step' := 6
+end role
+
+role pm(P, PT, PM, T : agent,
+        SND, RCV : channel(dy))
+    played_by PM def=
+    local
+        Step : nat,
+        Protocol, IDt, Nt : text,
+        K, Kppt : public_key
+    init Step := 4
+    transition
+    4. Step = 4 /\ RCV({{Protocol.IDt.Nt'}_T}_K)
+        =|>
+        Step' := 6
+end role
+
+role t(P, PT, PM, T : agent,
+        Tlstpt, Initsend : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by T def=
+    local
+        Step : nat,
+        X : message,
+        Hash : hash_func,
+        Kppt : public_key,
+        Protocol, IDt, IDpt, Nt : text,
+        K : public_key
+    init
+        Step := 1
+    transition
+    1. Step = 1 /\ RCV({X'}_Initsend)
+        =|>
+        Step' := 2
+    2. Step = 2 /\ RCV({Protocol.Step'.Kppt'.X'}_PT) /\ X = X'
+        =|>
+        request(T,PT,kppt_pt_t,X'(Kppt'))
+        /\ Nt' := new()
+        /\ IDpt' := Hash(Nt')
+        /\ witness(T,PT,idpt_t_pt,IDpt')
+        /\ Step' := 3
+        /\ SND({Protocol.Step'.IDt.IDpt'}_T)
+        /\ SND({{Protocol.IDt.Nt'}_T}_K)
+end role
+
+role session(P, PT, T, PM : agent,
+            Tlstpt, Air, Initsend : symmetric_key)
+    def=
+    local
+        SP, RP, SPT, RPT, ST, RT, SPM, RPM : channel(dy)
+    composition
+    p(P,PT,T,PM,Air,Initsend,SP,RP)
+    /\ pt(P,PT,T,PM,Air,Tlstpt,SPT,RPT)
+    /\ t(P,PT,T,PM,Tlstpt,Initsend,ST,RT)
+    /\ pm(P,PT,T,PM,SPM,RPM)
+end role
+
+role enviroment()
+    def=
+    const
+        idpt_t_pt, kppt_pt_t, idt_p_pt : protocol_id,
+        p, pt, t, pm : agent,
+        tlstpt, air, initsend : symmetric_key
+    intruder_knowledge = {p, pt, t, pm}
+    composition
+    session(p,pt,t,pm,tlstpt,air,initsend)
+    %/\ session(i,pt,t,pm,tlstpt,air,initsend)
+end role
+
+goal
+    authentication_on idpt_t_pt
+    %authentication_on kppt_pt_t
+    %authentication_on idt_p_pt
+end goal
+
+enviroment()

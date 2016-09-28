@@ -1,0 +1,138 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Passphone
+%% Author: André Karge (andre.karge@uni-weimar.de)
+%% Protocol: Bootstrapping PT
+%% Involved Parties: PT, T, PM
+%%
+%% 1. PT -> T  TLS((Protocol,1,0,KpPT,IDpm)_PT)
+%% 2. T  -> PM    (Protocol,2,IDt,Nt)_T = X
+%% 3. PM -> PT    X
+%% 4. PT -> T  TLS((Protocol,3,0,X)_PT)
+%% 5. T  -> PT TLS((Protocol,4,IDt,IDpt,K)_T)
+%% 6. T  -> PM E_K((Rekey,1,IDt,Nt',KpPT)_T)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+role pt(	PT, T, PM : agent,
+			SND, RCV : channel(dy),
+			K_PT_T, Air : symmetric_key,
+			IDt : text,
+			Protocol : text)
+	played_by PT def=
+	local
+		Step : nat,
+		Kpt : public_key,
+		IDpm : text,
+		Nt : text,
+		IDpt : text,
+		K : symmetric_key,
+		X : message
+		init Step := 0
+	transition
+		0. Step  = 0 /\ RCV(start) =|> %Start protocol
+		   Step':= 3 /\ Kpt' := new() %Build a new public key Kpt (secret key is inv(Kpt))
+		   			 /\ IDpm':= new() %Simmulate user mail address
+		   			 /\ SND({{Protocol.1.0.Kpt'.IDpm'}_PT}_K_PT_T) %Send message 1
+		   			 /\ witness(PT,T,kptPTT,Kpt')
+		   			 /\ witness(PT,T,idpmPTT,IDpm')
+	 	3. Step  = 3 /\ RCV({{Protocol.2.IDt.Nt'}_T}_Air) =|> %Receive ticket X
+	 	   Step':= 5 /\ SND({{Protocol.3.0.{Protocol.2.IDt.Nt'}_T}_PT}_K_PT_T) %Pass the ticket X to T
+ 	   	5. Step  = 5 /\ RCV({{Protocol.4.IDt.IDpt'.K'}_T}_K_PT_T) =|> %Receive message with IDpt
+ 	   	   Step':= 7 /\ request(PT,T,idptTPT,IDpt') %Check IDpt
+ 	   	   			 /\ request(PT,T,kTPTw,K') %Check K
+end role
+
+role t(		PT, T, PM : agent,
+			SND, RCV : channel(dy),
+			K_PT_T : symmetric_key,
+			IDt : text,
+			Protocol, Rekey : text,
+			H : hash_func)
+	played_by T def=
+	local
+		Step : nat,
+		IDpt : text,
+		IDpm : text,
+		Kpt : public_key,
+		Nt, Ntnew : text,
+		K : symmetric_key
+		init Step := 1
+	transition
+		1. Step  = 1 /\ RCV({{Protocol.1.0.Kpt'.IDpm'}_PT}_K_PT_T) =|> %Receive message 1
+		   Step':= 4 /\ Nt' := new() %Build nonce Nt
+		   			 /\ SND({Protocol.2.IDt.Nt'}_T) %Send ticket X
+		   			 /\ request(T,PT,kptPTT,Kpt') %Check Kpt
+		   			 /\ request(T,PT,idpmPTT,IDpm') %Check IDpm
+		   			 /\ witness(T,T,ntTT,Nt')
+	 	4. Step  = 4 /\ RCV({{Protocol.3.0.{Protocol.2.IDt.Nt'}_T}_PT}_K_PT_T) %Receive ticket from PT
+	 				 /\ Nt = Nt' =|> %Condition check for Nt
+ 		   Step':= 7 /\ request(T,T,ntTT,Nt') %Check Nt
+ 		   			 /\ Ntnew' := new() %Build new Nonce Ntnew
+ 		   			 /\ IDpt' := H(Ntnew') %Hash this nonce
+ 		   			 /\ K' := new() %generate new key K
+ 		   			 /\ SND({{Protocol.4.IDt.IDpt'.K'}_T}_K_PT_T) %Send ticket
+ 		   			 /\ SND({{Rekey.1.IDt.Ntnew'.Kpt}_T}_K') %Send rekeing ticket
+ 		   			 /\ secret(K',ktpt,{T,PT}) %make sure K is only known by T and PT
+ 		   			 /\ witness(T,PT,idptTPT,IDpt')
+ 		   			 /\ witness(T,PT,kTPTw,K')
+end role
+
+role pm(	PT, T, PM : agent,
+			SND, RCV : channel(dy),
+			Air : symmetric_key,
+			IDt : text,
+			Protocol, Rekey : text)
+	played_by PM def=
+	local
+		Step : nat,
+		Nt : text,
+		X : message,
+		Kpt : public_key,
+		K : symmetric_key
+		init Step := 2
+	transition
+		2. Step  = 2 /\ RCV(({Protocol.2.IDt.Nt'}_T)) =|> %Receive ticket X
+		   Step':= 6 /\ SND({{Protocol.2.IDt.Nt'}_T}_Air) %Pass the ticket X to PT
+	   	6. Step  = 6 /\ RCV({{Rekey.1.IDt.Nt'.Kpt}_T}_K') =|> %Receive encrypted rekeing ticket
+	   	   Step':= 7
+end role
+
+role session(	PT, T, PM : agent,
+				H : hash_func,
+				Protocol, Rekey : text)
+	def=
+	local
+		SPT, RPT, ST, RT, SPM, RPM : channel(dy),
+		IDt : text,
+		K_PT_T, Air : symmetric_key
+	composition
+		   %Constuctors for the roles
+		   pt(PT,T,PM,SPT,RPT,K_PT_T,Air,IDt,Protocol)
+		/\ t (PT,T,PM,ST,RT,K_PT_T,IDt,Protocol,Rekey,H)
+		/\ pm(PT,T,PM,SPM,RPM,Air,IDt,Protocol,Rekey)
+end role
+
+role environment()
+	def=
+	const
+		pt, t, pm : agent,
+		h : hash_func,
+		protocol, rekey : text,
+		kptPTT, idpmPTT, ntTT, ktpt, idptTPT, kTPTw : protocol_id
+	intruder_knowledge = {pt,t,pm,h,protocol,rekey}
+	composition
+		   %Define different sessions
+		   session(pt,t,pm,h,protocol,rekey)
+		/\ session(i,t,pm,h,protocol,rekey)
+		/\ session(i,t,i,h,protocol,rekey)
+end role
+
+goal
+	authentication_on kptPTT
+	authentication_on idpmPTT
+	authentication_on ntTT
+	secrecy_of ktpt
+	authentication_on idptTPT
+	authentication_on kTPTw
+end goal
+
+environment()

@@ -1,0 +1,152 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Passphone
+%% Protocol: Authentication
+%% Involved Paries: S, PS, T, PS
+%%
+%% 1. S  -> PS TLS(Protocol,1,IDs,Hpt,Ns)
+%% 2. PS -> T  TLS(Protocol,2,1,Hpt,Hs)
+%% 3. T  -> PS TLS((Protocol,3,IDt,Hpt,Nt)_T) = X
+%% 4. PS -> PT    (Protocol,4,1,X,Ns,IDs)
+%% 5. PT -> T  TLS((Protocol,5,IDpt,X)_PT)
+%% 6. T  -> PS TLS((Protocol,6,IDt,Hpt,Hs)_T) = Y
+%% 7. PS -> S  TLS(Protocol,7,1,Y)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+role s(
+		S, P, T  : agent,
+		SND, RCV : channel(dy),
+		K_S_P    : symmetric_key,
+        IDs, IDp : text,
+        Protocol : text,
+        Hpt      : text,
+        H        : hash_func)
+    played_by S def=
+    local
+        Step : nat,
+        Ns, Hs : text,
+        Y : message
+        init Step := 0
+    transition
+    0. Step  = 0 /\ RCV(start) =|>
+       Step':= 6 /\ Ns' := new()
+                 %/\ SND({{Protocol.1.IDs.Hpt.Ns'}_S}_K_S_P)
+                 /\ SND({Protocol.1.IDs.Hpt.Ns'}_K_S_P)
+                 /\ Hs' := H(Ns'.IDs)
+                 /\ witness(S,P,nsSP,Ns')
+                 /\ witness(S,P,hpTSP,Hpt)
+                 /\ witness(S,S,hsSS,Hs')
+    6. Step  = 6 /\ RCV({Protocol.6.IDp.Y'}_K_S_P) =|>
+       Step':= 7 /\ request(S,T,yTS,Y')
+                 /\ request(S,S,hsSS,Y'(Hs))
+end role
+
+role p(
+		S, P, T  : agent,
+		SND, RCV : channel(dy),
+		K_S_P    : symmetric_key,
+		K_P_T	 : symmetric_key,
+        H        : hash_func,
+        IDs, IDp, IDt : text,
+        Protocol : text,
+        Hpt      : text)
+    played_by P def=
+    local
+        Step : nat,
+        Ns, Hs, Nt : text,
+        Y : message
+        init Step := 1
+    transition
+    1. Step  = 1 %/\ RCV({{Protocol.1.IDs.Hpt.Ns'}_S}_K_S_P) =|>
+                 /\ RCV({Protocol.1.IDs.Hpt.Ns'}_K_S_P) =|>
+       Step':= 3 /\ Hs' := H(Ns'.IDs)
+                 /\ SND({Protocol.2.IDp.Hpt.Hs'}_K_P_T)
+                 /\ request(P,S,hpTSP,Hpt)
+                 /\ request(P,S,nsSP,Ns')
+                 /\ witness(P,T,hsPT,Hs')
+    3. Step  = 3 /\ RCV({{Protocol.3.IDt.Hpt.Hs'.Nt'}_T}_K_P_T) =|>
+       Step':= 5 /\ SND({{Protocol.4.IDp.Hpt.Hs'.Nt'}_T}_K_P_T)
+                 /\ request(P,T,ntTP,Nt')
+                 /\ witness(P,T,ntPT,Nt')
+    5. Step  = 5 /\ RCV({Y'}_K_P_T) =|>
+       Step':= 7 /\ SND({Protocol.6.IDp.Y'}_K_S_P)
+                 /\ request(P,T,yTP,Y')
+end role
+
+role t(
+		S, P, T  : agent,
+		SND, RCV : channel(dy),
+		K_P_T	 : symmetric_key,
+        IDp, IDt : text,
+        Protocol : text,
+        Hpt      : text)
+    played_by T def=
+    local
+        Step : nat,
+        Hs, Nt : text,
+        Y : message
+        init Step := 2
+    transition
+    2. Step  = 2 /\ RCV({Protocol.2.IDp.Hpt.Hs'}_K_P_T) =|>
+       Step':= 4 /\ Nt' := new()
+                 /\ SND({{Protocol.3.IDt.Hpt.Hs'.Nt'}_T}_K_P_T)
+                 /\ request(T,P,hsPT,Hs')
+                 /\ witness(T,P,ntTP,Nt')
+    4. Step  = 4 /\ RCV({{Protocol.4.IDp.Hpt.Hs'.Nt'}_T}_K_P_T) =|>
+       Step':= 7 /\ Y' := {Protocol.5.IDt.Hpt.Hs'}_T
+                 /\ SND({Y'}_K_P_T)
+                 /\ request(T,P,ntPT,Nt')
+                 /\ witness(T,P,yTP,Y')
+                 /\ witness(T,S,yTS,Y')
+end role
+
+role session(
+		S, P, T : agent,
+		%K_S_P	: symmetric_key,
+		%K_P_T	: symmetric_key,
+		H		: hash_func,
+        Protocol: text)
+    def=
+    local
+        SS, RS, SP, RP, ST, RT : channel(dy),
+        IDp, IDt, IDs : text,
+        K_P_T, K_S_P : symmetric_key,
+        Hpt : text
+    composition
+       s(S,P,T,SS,RS,K_S_P, IDs, IDp, Protocol, Hpt, H)
+    /\ p(S,P,T,SP,RP,K_S_P,K_P_T,H, IDs, IDp, IDt, Protocol, Hpt)
+    /\ t(S,P,T,ST,RT,K_P_T, IDp, IDt, Protocol, Hpt)
+end role
+
+role environment()
+    def=
+    const
+        s, p, t : agent,
+        %k_p_t   : symmetric_key,
+        %k_s_p   : symmetric_key,
+        h       : hash_func,
+        protocol: text,
+        nsSP, hsPT, ntTP, ntPT, yTS, yTP, hsSS, hpTSP    : protocol_id
+    intruder_knowledge = {s, p, t, h}
+    composition
+       session(s,p,t,h,protocol) 
+    /\ session(i,p,t,h,protocol) 
+    /\ session(s,i,t,h,protocol)
+    /\ session(i,i,t,h,protocol)
+      % session(s,p,t,k_s_p,k_p_t,h,protocol) 
+    %/\ session(i,p,t,k_s_p,k_p_t,h,protocol) 
+    %/\ session(s,i,t,k_s_p,k_p_t,h,protocol)
+    %/\ session(s,p,i,k_s_p,k_p_t,h,protocol)
+end role
+
+goal
+    %authentication_on nsSP
+    authentication_on hsSS
+    authentication_on hsPT
+    authentication_on ntTP
+    authentication_on ntPT
+    authentication_on yTP
+    authentication_on yTS
+    %authentication_on hpTSP
+end goal
+
+environment()

@@ -1,0 +1,103 @@
+% - Alle Variablen in HLPSL beginnen mit Grossbuchstaben
+% - Alle Konstanten beginnen mit Kleinbuchstaben
+% - Alle Variablen muessen getypt sein
+% - Secrets sollten in der rolle angegeben werden, die diese variablen auch erzeugen
+
+role alice(
+        %Definition einiger Parameter, die Alice weiss:
+        A, B : agent,            %A und B sind Beteiligte
+        Ka, Kb : public_key,     %Ka und Kb sind oeffentliche schluessel
+        SND, RCV : channel(dy)   %SND und RCV sind Kommunikationskanaele - parameter in Klammer ist fuer intruder model
+    )
+    
+    
+    played_by A def=     % A bezeichnet den Beteiligten, der Alice spielt, da alice played_by A
+    local State : nat,   % local = Lokale Variable von Alice namens State = natuerliche Zahl
+    Na, Nb : text        % ALice weiss, dass Na und Nb texte sind
+    init State := 0      % State wird mit 0 initialisiert
+    
+    transition           % Spezifikation von Transitionen
+    0. State = 0 /\ RCV(start)         % Transition mit Namen 0 - wenn State = 0 und RCV mit Start belegt
+        =|>                            % Fuehre aus
+        State' := 2 /\                 % Setze State auf 2
+        Na' := new() /\                % generiere einen neuen text Na (neue nonce)
+        SND({Na'.A}_Kb) /\             % lege diese neue Na auf den SND Kanal mit Kb verschluesselt
+        secret(Na',na,{A,B})/\           % Sicherheitsziele: Na' wird zwischen A und B sicher gehalten ({A,B} = nur A und B duerfen davon
+        witness(A, B, na_w, Na')         % wissen) , zweite Variable ist protocol_id (muss const in enviroment deklariert sein)
+    
+    %2. State = 2 /\ RCV({Na.Nb'}_Ka)   % Unsicheres Protokoll RCV
+    2. State = 2 /\ RCV({Na.Nb'.B}_Ka) % Transition mit Namen 2 - wenn State = 2 und RCV mit {Na.Nb'}_Ka belegt
+        =|>                            % Fuehre aus
+        request(A, B, nb_w, Nb') /\
+        State' := 4 /\                 % Setze State auf 4
+        SND({Nb'}_Kb)
+end role
+
+role bob(
+        %Definition einiger Parameter, die Alice weiss:
+        A, B : agent,               %A und B sind Beteiligte
+        Ka, Kb : public_key,        %Ka und Kb sind oeffentliche schluessel
+        SND, RCV : channel(dy)      %SND und RCV sind Kommunikationskanaele - parameter in Klammer ist fuer intruder model
+    )
+    played_by B def=                % B bezeichnet den Beteiligten, der Bob spielt, da bob played_by B
+    local State : nat,              % local = Lokale Variable von Alice namens State = natuerliche Zahl
+    Na, Nb : text                   % Bob weiss, dass Na und Nb texte sind
+    init State := 1                 % State wird mit 1 initialisiert
+    
+    transition                      % Spezifikation von Transitionen
+    1. State = 1 /\ RCV({Na'.A}_Kb) % Transition mit Namen 1 - wenn State = 1 und RCV mit {Na'.A}_Kb belegt
+        =|>                         % Fuehre aus
+        request(B, A, na_w, Na') /\
+        State' := 3 /\              % Setze State auf 3
+        Nb' := new() /\             % generiere einen neuen text Nb (neue nonce)
+        %SND({Na'.Nb'}_Ka) /\        % Unsicheres Protokoll SND
+        SND({Na'.Nb'.B}_Ka) /\      % lege empfangene Na mit neu generierter Nb verschluesselt mit Ka auf den SND Kanal 
+        secret(Nb',nb,{A,B})  /\    % Sicherheitsziele: Nb' wird zwischen A und B sicher gehalten ({A,B} = nur A und B duerfen davon
+        witness(B,A,nb_w,Nb')       % wissen) , zweite Variable ist protocol_id (muss const in enviroment deklariert sein)
+    3. State = 3 /\ RCV({Nb'}_Kb)   % Transition mit Namen 3 - wenn State = 3 und RCV mit {Nb'}_Kb belegt
+        =|>                         % Fuehre aus
+        State' := 4                 % Setze State auf 4
+end role
+
+role session(                       % Deklaration einer Session
+        A, B : agent,               % A und B sind Beteiligte
+        Ka, Kb : public_key         % Ka und Kb sind oeffentliche schluessel
+    )
+    def= 
+    local SA, RA, SB, RB : channel(dy)  % lokale Variablen einer Session sind die Kanaele SND und RCV von jeweils A und B
+    composition                         % rollen werden instanziiert
+    alice(A,B,Ka,Kb,SA,RA) /\ bob(A,B,Ka,Kb,SB,RB) % Deklaration aller Channels, die von den Rollen verwendet werden
+    
+    % channel type spezifiziert das intruder model   --  dy steht für Dolev-Yao
+    % dy: intruder hat volle Kontrolle über das Netzwerk (alle Messages der Agenten gehen auch an den Intruder)
+    % kann Nachrichten Mitschneiden, Analysieren oder Modifizieren(solang er die Keys kennt)
+    % Zudem kann er sich beliebige Messages erstellen und an egal wen verschicken um sich als Agent auszugeben
+    % Zur Zeit gibt es nur Dolev-Yao
+end role
+
+role enviroment() def=          % Top-Level Rolle (Beinhaltet globale Einschränkungen und eine Komposition von 1 oder mehreren Sessions)   
+    const a, b : agent,         % Agenten
+    ka, kb, ki : public_key,    % Public Keys
+    na, nb, na_w, nb_w : protocol_id        % Security Ziele durch lowercase auf die Kritischen Variablen verweisend
+    
+    intruder_knowledge = {a, b, ka, kb, ki, inv(ki)}                % Wissen, das Intruder generell hat
+    composition                                                     % Rollen werden instanziiert
+    session(a,b,ka,kb) /\ session(a,i,ka,ki) /\ session(i,b,ki,kb)  % Intruder spielt Rollen als legitimer User
+end role
+
+goal
+    secrecy_of na, nb           % Das Tool soll prüfen, ob na und nb vor dem Eingriff des Intruders sicher sind
+    authentication_on na_w
+    authentication_on nb_w
+end goal
+
+enviroment()                    % finales Statement = instanz der top-Level Rolle
+
+
+
+
+
+
+
+
+

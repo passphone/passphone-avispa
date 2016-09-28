@@ -1,0 +1,68 @@
+Witness and Request
+
+witness and request events are kinda complicated, but they work and they
+are actually reasonably powerful.  Here's the deal: let's say you and me
+are sitting in our houses down the street from each other executing
+NSPK.  You're Alice and I'm Bob.  You create for me some random nonce
+called Na and send it to me in a letter.  When you do this, you raise a
+little red flag that indicates what the random value for Na was, let's
+say 17.  So at your house you fly a red flag that says "Marie's value
+for Paul, which is called Na, is 17."  In AVISPA, we call these flags
+witness facts.  So in NSPK, the fact
+    witness(A,B,bob_alice_na,Na')
+that Alice emits in the example on the web means "My name is A, and I
+created the value Na' for the guy named B.  I created it for the purpose
+called bob_alice_na."  The purpose is just a name and could be anything,
+but it ensures that the intruder can't do any funny stuff like take a
+value that you intended as your nonce Na, and inject it someplace else
+where I want you to send me, for example, your public key.
+
+Ok, so that's you.  Now over at my place I'm Bob.  I get a letter from
+you.  It's got what is supposedly your nonce in it and your name,
+encrypted for me.  Then at the end of the protocol, you have sent me
+back my Nb and that's supposed to prove to me that it's really you,
+right?  So what I do after I get that last message is I fly a little
+blue flag at my house that indicates what I believe your value for Na
+was.  So my flag says "I'm Paul, and the value for Na that I believe I
+got from Marie, is 17."  This, in AVISPA, is done with a request flag.
+In NSPK, in the Bob role we have
+    request(B,A,bob_alice_na,Na)
+and this says "I'm B, I believe I'm talking to A and she sent me the
+value Na for the purpose bob_alice_na."
+
+So far so good?  I hope so.
+
+So where's the intruder?  The intruder is the mailman.  He's carrying
+the letters between our two houses, and he can open 'em, read 'em, and
+replace them with his own letters if he wants.  The only thing he can't
+do is decrypt stuff when he doesn't have the key.  ALSO, he can't climb
+on top of our houses and replace the flags.  So when you fly your red
+flag and I fly my blue one, he can't screw around with those or take
+them down.
+
+Almost finished I promise.  So where's the AVISPA Tool?  The AVISPA Tool
+is a guy across the street with binoculars.  His job is to look our for
+flags and make sure they match in a particular way.  What way?  Well,
+for authentication what he looks for is this: if he EVER sees a blue
+flag go up (Bob's flag), then there MUST be a red flag someplace with
+the same people, the same purpose, and the same value.  So if my flag
+says I believe the value 17 came from you, your flag must say you
+created the value 17 for me for the same purpose.  And if you have
+replay protection (i.e. request and not wrequest), then those flags
+better be unique.  If I fly two blue flags that look the same, there
+better be two red flags on your house.  Otherwise it means the intruder,
+the mailman, photocopied your letters and is delivering them to me again
+(maybe even after you moved away!).
+
+That's how witness and request events work.  The AVISPA Tool looks for
+situations in which they see the first request flag above, and make sure
+that when it comes there is a matching witness that looks like the one
+above.  If not, it's an attack.
+
+Who decides the goals?  That's one of the challenges of modelling
+protocols.  Generally, we try to extract them from the description of
+the protocol that's in an RFC or something.  They are sometimes
+intuitively clear: if two people exchange a key for instance, it's
+reasonable to assume that good goals include that the key should be
+secret and they should agree upon its value, so it should be  
+authenticated.

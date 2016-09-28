@@ -1,0 +1,6 @@
+- K umbenennen in TLS
+- bei TLS wird noch Signiert nach Verschlüsselung
+- .ota einbauen um over the air zu simmulieren
+- BootPT nochmal Fehlerfrei neu schreiben - testen
+
+- was proofen die proofer?

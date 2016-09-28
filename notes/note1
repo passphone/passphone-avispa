@@ -1,0 +1,3 @@
+- Getestet mit BootPT - witness request  => Protokoll nochmal von grund auf neu schreiben
+- getestet mit Needham Schröder - witness request
+- getestet mit eigenem Protokoll zu symmetric_key - witness request funktioniert!b

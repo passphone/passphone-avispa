@@ -1,0 +1,77 @@
+role pt(PT, PM, T : agent,
+        TLStpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by PT def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 1
+    transition
+    1. Step = 1 /\ RCV(start)
+        =|>
+        IDpt' := new()
+        /\ SND({{Protocol.Step.IDpt'}_PT}_TLStpt)
+        /\ witness(PT,T,idpt_pt_t,IDpt')
+        /\ witness(PT,PM,idpt_pt_pm,IDpt')
+        /\ Step' := 3
+end role
+
+role pm(PT, PM, T : agent,
+        SND, RCV : channel(dy))
+    played_by PM def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 2
+    transition
+    2. Step = 2 /\ RCV({Protocol.Step'.IDt.IDpt'.Nt}_T)
+        =|>
+        request(PM,PT,idpt_pt_pm,IDpt')
+        /\ Step' := 4
+end role
+
+role t(PT, PM, T : agent,
+        TLStpt : symmetric_key,
+        SND, RCV : channel(dy))
+    played_by T def=
+    local
+        Step : nat,
+        Protocol, IDpt, IDt, Nt : text
+    init Step := 1
+    transition
+    1. Step = 1 /\ RCV({{Protocol.Step.IDpt'}_PT}_TLStpt)
+        =|>
+        request(T,PT,idpt_pt_t,IDpt')
+        /\ Step' := 4
+        /\ SND({Protocol.Step'.IDt.IDpt'.Nt}_T)
+end role
+
+role session(PT, T, PM : agent,
+            Tlstpt : symmetric_key)
+    def=
+    local
+        SPT, RPT, ST, RT, SPM, RPM : channel(dy)
+    composition
+    pt(PT,PM,T,Tlstpt,SPT,RPT)
+    /\ t(PT,PM,T,Tlstpt,SPT,RPT)
+    /\ pm(PT,PM,T,SPT,RPT)
+end role
+
+role enviroment()
+    def=
+    const
+        idpt_pt_t, idpt_pt_pm : protocol_id,
+        tlstpt : symmetric_key,
+        pt, t, pm : agent
+    intruder_knowledge = {pt, t, pm}
+    composition
+        session(pt,t,pm,tlstpt)
+        %/\ session(i,t,pm)
+end role
+
+goal
+    authentication_on idpt_pt_t
+    authentication_on idpt_pt_pm
+end goal
+
+enviroment()

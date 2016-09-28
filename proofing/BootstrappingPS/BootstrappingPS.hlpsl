@@ -1,0 +1,176 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Passphone
+%% Author: André Karge (andre.karge@uni-weimar.de)
+%% Protocol: Bootstrapping PS
+%% Involved Parties: PS, PT, S, T
+%%
+%% 1. S  -> PS  TLS(Protocol,1,IDs,Ns)
+%% 2. PS -> T   TLS(Protocol,2,1,Hs)
+%% 3. T  -> PS  TLS((Protocol,3,IDt,Hs,Nt)_T) = X
+%% 4. PS -> PT     (Protocol,4,1,X,Ns,IDs)
+%% 5. PT -> T   TLS((Protocol,5,IDpt,X)_PT)
+%% 6. T  -> PS  TLS((Protocol,6,IDt,Hpt,Hs)_T) = Y
+%% 7. PS -> S   TLS(Protocol,7,1,Y)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+role s(		S, PS, T, PT : agent,
+			SND, RCV : channel(dy),
+			K_S_PS, Init : symmetric_key,
+			IDs, IDt, IDpt : text,
+			Protocol : text,
+			H : hash_func)
+	played_by S def=
+	local
+		Step : nat,
+		Ns : text,
+		Hs : text,
+		Hpt : text
+		init Step := 0
+	transition
+		0. Step  = 0 /\ RCV(start) =|> %Start protocol
+		   Step':= 7 /\ Ns' := new() %Build new nonce Ns
+		   			 /\ SND({Protocol.1.IDs.Ns'}_K_S_PS) %Send message 1 to PS
+		   			 /\ SND({IDs}_Init) %Make sure PT is able to check IDs
+		   			 /\ Hs' := H(Ns'.IDs) %Make sure S is able to check Hs
+		   			 /\ witness(S,PS,nsSPS,Ns')
+		   			 /\ witness(S,S,hsSS,Hs')
+		   			 /\ secret(K_S_PS,tlsSPS,{S,PS})
+		   			 /\ secret(Init,initSPT,{S,PT})
+	 	7. Step  = 7 /\ RCV({Protocol.7.1.{Protocol.6.IDt.Hpt'.Hs'}_T}_K_S_PS) %Receive ticket Y from PS
+	 				 /\ Hs = Hs' =|> %Condition check for Hs
+	 	   Step':= 8 /\ request(S,S,hSSS,Hs') %Check for Hs
+	 	   			 /\ request(S,T,hptTS,Hpt') %Check for Hpt
+end role
+
+role ps(	S, PS, T, PT : agent,
+			SND, RCV : channel(dy),
+			K_S_PS, K_PS_T, Air : symmetric_key,
+			IDs, IDt, IDpt : text,
+			Protocol : text,
+			H : hash_func)
+	played_by PS def=
+	local
+		Step : nat,
+		Ns : text,
+		Nt : text,
+		Hs : text,
+		Hpt : text
+		init Step := 1
+	transition
+		1. Step  = 1 /\ RCV({Protocol.1.IDs.Ns'}_K_S_PS) =|> %Receive message 1 from S
+		   Step':= 3 /\ Hs' := H(Ns'.IDs) %Hash Ns with IDs
+		   			 /\ SND({Protocol.2.1.Hs'}_K_PS_T) %Send message 2 to T
+		   			 /\ wrequest(PS,S,nsSPS,Ns') %Check Ns
+		   			 /\ witness(PS,T,hsPST,Hs')
+		   			 /\ secret(K_PS_T,tlsPST,{PS,T})
+	 	3. Step  = 3 /\ RCV({{Protocol.3.IDt.Hs'.Nt'}_T}_K_PS_T) =|> %Receive ticket X
+	 	   Step':= 6 /\ SND({Protocol.4.1.{Protocol.3.IDt.Hs'.Nt'}_T.Ns.IDs}_Air) %Pass ticket X to PT
+	 	   			 /\ request(PS,T,ntTPS,Nt') %Check Nt
+	 	   			 /\ witness(PS,PT,nsPSPT,Ns)
+		   			 /\ secret(Air,airPSPT,{PS,PT})
+ 	   	6. Step  = 6 /\ RCV({{Protocol.6.IDt.Hpt'.Hs'}_T}_K_PS_T) =|> %Receive ticket Y
+ 	   	   Step':= 8 /\ SND({Protocol.7.1.{Protocol.6.IDt.Hpt'.Hs'}_T}_K_S_PS) %Pass ticket Y to S
+end role
+
+role t(		S, PS, T, PT : agent,
+			SND, RCV : channel(dy),
+			K_PS_T, K_T_PT : symmetric_key,
+			IDs, IDt, IDpt : text,
+			Protocol : text,
+			H : hash_func)
+	played_by T def=
+	local
+		Step : nat,
+		Hs : text,
+		Nt : text,
+		Hpt : text
+		init Step := 2
+	transition
+		2. Step  = 2 /\ RCV({Protocol.2.1.Hs'}_K_PS_T) =|> %Receive message 2 from PS
+		   Step':= 5 /\ Nt' := new() %Build new nonce Nt
+		   			 /\ SND({{Protocol.3.IDt.Hs'.Nt'}_T}_K_PS_T) %Send ticket X to PS
+		   			 /\ request(T,PS,hsPST,Hs') %Check Hs
+		   			 /\ witness(T,PS,ntTPS,Nt')
+		   			 /\ witness(T,PT,ntTPT,Nt')
+		   			 /\ witness(T,T,ntTT,Nt')
+	 	%Receive ticket X from PT
+	 	5. Step  = 5 /\ RCV({{Protocol.5.IDpt.{Protocol.3.IDt.Hs'.Nt'}_T}_PT}_K_T_PT)
+	 				 /\ Nt = Nt' =|> %Condition check for Nt
+	 	   Step':= 8 /\ Hpt' := H(IDpt.Nt) %Hash IDpt and Nt
+	 	   			 /\ SND({{Protocol.6.IDt.Hpt'.Hs}_T}_K_PS_T) %Send ticket Y to PS
+	 	   			 /\ request(T,T,ntTT,Nt') %Check Nt
+	 	   			 /\ witness(T,S,hptTS,Hpt')
+end role
+
+role pt(	S, PS, T, PT : agent,
+			SND, RCV : channel(dy),
+			K_T_PT, Air, Init : symmetric_key,
+			IDs, IDt, IDpt : text,
+			Protocol : text)
+	played_by PT def=
+	local
+		Step : nat,
+		Hs : text,
+		Nt : text,
+		Ns : text
+		init Step := 0
+	transition
+		00.Step  = 0 /\ RCV({IDs'}_Init) =|> %Receive IDs for later check
+		   Step':= 4
+		%Receive ticket X from PT
+		4. Step  = 4 /\ RCV({Protocol.4.1.{Protocol.3.IDt.Hs'.Nt'}_T.Ns'.IDs'}_Air)
+					 /\ IDs = IDs' =|> %Condition check for IDs
+		   Step':= 8 /\ SND({{Protocol.5.IDpt.{Protocol.3.IDt.Hs'.Nt'}_T}_PT}_K_T_PT) %Pass Y to T
+		   			 /\ request(PT,T,ntTPT,Nt') %Check Nt
+		   			 /\ request(PT,PS,nsPSPT,Ns') %Check Ns
+		   			 /\ secret(K_T_PT,tlsTPT,{PT,T})
+end role
+
+role session(	S, PS, T, PT : agent,
+				H : hash_func,
+				Protocol : text)
+	def=
+	local
+		SS, RS, SPS, RPS, ST, RT, SPT, RPT : channel(dy),
+		IDs, IDt, IDpt : text,
+		K_S_PS, K_PS_T, K_T_PT, Air, Init : symmetric_key
+	composition
+		   %Constuctors for the roles
+		   s (S,PS,T,PT,SS,RS,K_S_PS,Init,IDs,IDt,IDpt,Protocol,H)
+		/\ ps(S,PS,T,PT,SPS,RPS,K_S_PS,K_PS_T,Air,IDs,IDt,IDpt,Protocol,H)
+		/\ t (S,PS,T,PT,ST,RT,K_PS_T,K_T_PT,IDs,IDt,IDpt,Protocol,H)
+		/\ pt(S,PS,T,PT,SPT,RPT,K_T_PT,Air,Init,IDs,IDt,IDpt,Protocol)
+end role
+
+role environment()
+	def=
+	const
+		s,ps,t,pt : agent,
+		h : hash_func,
+		protocol : text,
+		nsSPS, hSSS, hsPST, ntTT, ntTPS, ntTPT, hptTS, tlsSPS, initSPT, tlsPST, airPSPT, tlsTPT : protocol_id
+	intruder_knowledge = {s,ps,t,pt,h,protocol}
+	composition
+		   %Define different sessions
+		   session(s,ps,t,pt,h,protocol)
+		/\ session(i,ps,t,pt,h,protocol)
+		/\ session(s,i,t,pt,h,protocol)
+		/\ session(s,ps,t,i,h,protocol)
+end role
+
+goal
+	weak_authentication_on nsSPS
+	authentication_on hSSS
+	authentication_on hsPST
+	authentication_on ntTPT
+	authentication_on ntTT
+	authentication_on ntTPS
+	authentication_on hptTS
+	secrecy_of tlsSPS
+	secrecy_of initSPT
+	secrecy_of tlsPST
+	secrecy_of airPSPT
+	secrecy_of tlsTPT
+end goal
+
+environment()

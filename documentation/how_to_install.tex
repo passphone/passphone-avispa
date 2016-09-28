@@ -1,0 +1,20 @@
+\chapter{Installation Guide AVISPA}
+\begin{itemize}
+\item extract the AVISPA Package (note that the tool is for i686 enviroments and make sure that you have to install the needed i686 packages that will be shown if they are not installed)
+\begin{lstlisting}[language=bash]
+tar -xvzf avispa-package-1.1_Linux-i686.tgz
+\end{lstlisting}
+\item move extracted folder to /opt
+\begin{lstlisting}[language=bash]
+sudo mv avispa-1.1 /opt/
+\end{lstlisting}
+\item make sure avispa is executable
+\begin{lstlisting}[language=bash]
+sudo chown user:user /opt/
+\end{lstlisting}
+\item export paths for bash execution
+\begin{lstlisting}[language=bash]
+export AVISPA_PACKAGE=/opt/avispa-1.1
+export PATH=$PATH:$AVISPA_PACKAGE
+\end{lstlisting}
+\end{itemize}

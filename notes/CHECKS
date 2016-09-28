@@ -1,0 +1,190 @@
+CHECKS
+-------------------------------------------
+BootPT
+0 = PT generate KpPT
+    PT input IDPM
+    build BootT1 msg 
+    - no checks
+1 = T receive BootP1 msg
+    creates Session
+    check signature
+    checks domain
+    build NT
+    build BootT2 Msg Link 
+    - only signature and domain checks
+2 = PT scans the QR code of the link
+    check signature
+    check domain
+    PT tunnels the msg to T in msg BootT3 
+    - only signature and domain checks
+3 = T receives the msg from PT
+    check signatures
+    checks domains
+    CKECKS IF NONCE WAS THE CREATED ONE
+    generate pin
+    generate NT
+    hashes NT = IDPT
+    build msg BootT4 
+    - NONCE CHECK
+4 = PT receives BootT4 msg
+    check signature
+    check domain
+    save IDPT 
+    - only signature and domain check
+
+-------------------------------------------
+BootPS
+0 = S generates NS
+    S has IDS
+    builds msg BootS1 
+    - no checks
+1 = PS receives BootS1
+    checks domain
+    builds Hs out of NS and IDS
+    creates IDPS
+    builds msg BootS2 
+    - only domain and signature check
+2 = T receives BootS2 msg
+    checks signature
+    checks domain
+    creates NT
+    builds msg BootS3 
+    - checks only domain
+3 = PS receives BootS3 msg / or link to msg
+    (CHECKS IF HS WAS THE CREATED ONE)
+    builds BootS4 msg
+    shows the QR code 
+    - HS CHECK
+4 = PT receives BootS4 msg by capturing it
+    CHECKS HS
+    shows IDS and NS? to user
+    checks signature
+    checks domain
+    builds msg BootS5 
+    - HS CHECK + USER INPUT
+5 = T receives BootS5 msg
+    checks signature
+    checks domain
+    CHECK HS
+    CHECK NT
+    build HPT
+    build msg BootS6 
+    - HS and NT CHECK
+5a= PS receives BootS6
+    checks domain
+    checks signature
+    CHECK HS
+    builds msg BootS7 
+    - HS CHECK
+6 = S receives BootS7
+    check signature
+    check domain
+    CHECKS HS
+    writes HPT in DB 
+    - CHECK HS
+
+-------------------------------------------
+Auth
+0 = PS receives msg Auth1 from S
+    builds HS
+    builds msg Auth2 
+    - no checks
+2 = TTP receives Auth2
+    CHECK IF HPT IS IN DB
+    check domain
+    CHECK IF USER IS REGISTERED 
+    CHECK IF USER HASN'T REVOKED
+    build NT
+    build msg Auth3 
+    - DB CHECKS
+3 = PS receives Auth3 msg / or link to msg
+    (CHECK IF HS WAS THE CREATED ONE) 
+    builds Auth4 msg
+    shows QR code 
+    - HS CHECK
+4 = PT receives Auth4 msg by capturing it
+    check domains
+    check signatures
+    CHECK HS
+    show IDS and NS? to user
+    build msg Auth5 
+    - CHECK HS
+5 = TTP receives Auth5 msg
+    CHECK IF HPT IS IN DB
+    check domains
+    check signatures
+    CHECK IF SESSION(HS) IS IN DB
+    CHECK NT
+    builds Auth6 msg 
+    - DB CHECKS(HS and HPT) + NT CHECK
+5a= PS receives Auth6 msg
+    CHECKS HS
+    CHECKS HPT
+    checks signature
+    checks domain
+    builds Auth7 msg 
+    - CHECK HS AND HPT
+6 = S receives Auth7 msg
+    CHECKS HPT
+    CHEKCS HS
+    checks signature
+    cheks domain 
+    - CHECKS HPT and HS
+
+-------------------------------------------
+RevokePS
+1-3 = Auth Steps
+4 = PS builds RevPS1 msg
+5 = TTP receives RevPS1 msg
+    checks signature
+    checks domain
+    CHECKS IF HPT IS IN DB
+    CHECKS IF SESSION IS IN DB
+    CHECKS IF USER IS REGISTERED
+    CHECKS NT
+    CHECKS HS
+    CHECKS HPT
+    CHECKS MSG ORIGIN
+    kills session
+    deactivates user 
+    - NT, HS, HPT CHECKS + DB CHECKS
+
+-------------------------------------------
+RevokePT
+0 = PT builds RevPT1 msg
+1 = TTP receives RevPT1 msg
+    checks signature
+    checks domain
+    CHECK IF USER IS IN DB
+    kills session
+    deactivates user 
+    - DB CHECK
+
+-------------------------------------------
+Rekey
+1 = User scans his ticket(Rekey1)
+    PT receives it
+    check domain
+    check signature
+    COMPARE KpPT of ticket with in DB
+    CHECK NT by Hashing it and compare it with idPT
+    deactivate user
+    generate new keypair
+    create Rekey2 msg 
+    - DB CHECKS
+2 = TTP receives Rekey2 msg
+    check domains
+    check signatures
+    CHECK IF USER IS ACTIVE
+    build NT
+    generate pin
+    build IDPT
+    build Rekey3 msg
+    activate user 
+    - DB CHECKS
+3 = PT receives Rekey3 msg
+    check signature
+    check domain
+    CHECK IF USER IS ACTIVE
+    activate user
+    - DB CHECK

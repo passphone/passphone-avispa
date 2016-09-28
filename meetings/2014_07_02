@@ -1,0 +1,10 @@
+message objekt funktion - mail schreiben an entwickler
+state = step
+kompletten header einbinden
+
+mailadresse darf nicht auswechselbar sein - authentisch
+public key darf nicht auswechselbar sein - authentisch
+IDpt darf nicht veränderbar sein - authentisch
+noncen - authentisch
+
+kanal zwischen PM und PT sicher vor Eve - simulierbar?

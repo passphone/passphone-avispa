@@ -1,0 +1,121 @@
+
+----------------
+  AtSe Summary  
+----------------
+
+  Protocol file: /opt/avispa-1.1/testsuite/results/Auth.if
+  Attack found : YES
+
+  Analysed   : 47 states
+  Reachable  : 12 states
+  Translation: 0.02 seconds
+  Computation: 0.00 seconds
+
+
+---------------------------------------------
+            Internal System State            
+  (initial state after reading the if file)  
+---------------------------------------------
+
+Intruder state :
+----------------
+
+Intruder Knowledge :  start i h t p s 
+ Unforgeable terms :  dummy_sk
+
+
+Interpreted protocol specification :
+------------------------------------
+
+Role t played by (t,13):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(17)}_dummy_sk
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(17).n17(Nt)}_t}_dummy_sk
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(18).Nt(18)}_t}_dummy_sk
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(18)}_t}_dummy_sk
+|    & Witness(t,s,yTS,{protocol.5.dummy_nonce.dummy_nonce.Hs(18)}_t);
+
+Role s played by (s,11):
+| start => {protocol.1.dummy_nonce.dummy_nonce.n15(Ns)}_dummy_sk
+|    & Witness(s,s,hsSS,{n15(Ns).dummy_nonce}_h);
+
+Role t played by (t,9):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(11)}_dummy_sk
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(11).n11(Nt)}_t}_dummy_sk
+|    & Witness(t,p,ntTP,n11(Nt));  Request(t,p,hsPT,Hs(11));
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(12).Nt(12)}_t}_dummy_sk
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(12)}_t}_dummy_sk
+|    & Witness(t,p,yTP,{protocol.5.dummy_nonce.dummy_nonce.Hs(12)}_t);
+|    & Request(t,p,ntPT,Nt(12));
+
+Role p played by (p,8):
+| {protocol.1.dummy_nonce.dummy_nonce.Ns(9)}_dummy_sk
+|   => {protocol.2.dummy_nonce.dummy_nonce.{Ns(9).dummy_nonce}_h}_dummy_sk
+|    & Witness(p,t,hsPT,{Ns(9).dummy_nonce}_h);
+
+Role t played by (t,5):
+| {protocol.2.dummy_nonce.dummy_nonce.Hs(5)}_dummy_sk
+|   => {{protocol.3.dummy_nonce.dummy_nonce.Hs(5).n5(Nt)}_t}_dummy_sk
+|    & Witness(t,p,ntTP,n5(Nt));  Request(t,p,hsPT,Hs(5));
+| {{protocol.4.dummy_nonce.dummy_nonce.Hs(6).Nt(6)}_t}_dummy_sk
+|   => {{protocol.5.dummy_nonce.dummy_nonce.Hs(6)}_t}_dummy_sk
+|    & Witness(t,s,yTS,{protocol.5.dummy_nonce.dummy_nonce.Hs(6)}_t);
+|    & Witness(t,p,yTP,{protocol.5.dummy_nonce.dummy_nonce.Hs(6)}_t);
+|    & Request(t,p,ntPT,Nt(6));
+
+Role p played by (p,4):
+| {protocol.1.dummy_nonce.dummy_nonce.Ns(3)}_dummy_sk
+|   => {protocol.2.dummy_nonce.dummy_nonce.{Ns(3).dummy_nonce}_h}_dummy_sk
+|    & Witness(p,t,hsPT,{Ns(3).dummy_nonce}_h);  Request(p,s,nsSP,Ns(3));
+|    & Request(p,s,hpTSP,dummy_nonce);
+
+Role s played by (s,3):
+| start => {protocol.1.dummy_nonce.dummy_nonce.n1(Ns)}_dummy_sk
+|    & Witness(s,s,hsSS,{n1(Ns).dummy_nonce}_h);
+|    & Witness(s,p,hpTSP,dummy_nonce);  Witness(s,p,nsSP,n1(Ns));
+
+
+Some Remarks :
+--------------
+
+- The syntax of protocol steps is
+   "Received Msg" => "Sent Msg"  [Equalities] & Inequalities & IF facts
+- A Role is a tree where steps are unary nodes and choice points are n-ary nodes
+- The Initial System state is the state of cl-atse at the begining of the search
+  for attacks, and represents both the intruder and honest participants state.
+- See the cl-atse's subsection in the user-manual for more details.
+
+
+--------------------------------------------------
+                Attack Description                
+ (the list of protocol steps followed by cl-atse) 
+--------------------------------------------------
+
+Short attack description :
+--------------------------
+
+ Kind of attack:  Authentication on (p,s,nsSP,n15(Ns))
+   Substitution:  [ Ns(9)=n1(Ns)  Ns(3)=n15(Ns) ]
+  Compact trace:  (s,3) (p,8) (s,11) (p,4) 
+
+
+Detailed attack description :
+-----------------------------
+
+ i -> (s,3):  start
+ (s,3) -> i:  {protocol.1.dummy_nonce.dummy_nonce.n1(Ns)}_dummy_sk
+              & Witness(s,s,hsSS,{n1(Ns).dummy_nonce}_h);
+              & Witness(s,p,hpTSP,dummy_nonce);  Witness(s,p,nsSP,n1(Ns));
+
+ i -> (p,8):  {protocol.1.dummy_nonce.dummy_nonce.n1(Ns)}_dummy_sk
+ (p,8) -> i:  {protocol.2.dummy_nonce.dummy_nonce.{n1(Ns).dummy_nonce}_h}_dummy_sk
+              & Witness(p,t,hsPT,{n1(Ns).dummy_nonce}_h);
+
+ i -> (s,11):  start
+ (s,11) -> i:  {protocol.1.dummy_nonce.dummy_nonce.n15(Ns)}_dummy_sk
+               & Witness(s,s,hsSS,{n15(Ns).dummy_nonce}_h);
+
+ i -> (p,4):  {protocol.1.dummy_nonce.dummy_nonce.n15(Ns)}_dummy_sk
+ (p,4) -> i:  {protocol.2.dummy_nonce.dummy_nonce.{n15(Ns).dummy_nonce}_h}_dummy_sk
+              & Witness(p,t,hsPT,{n15(Ns).dummy_nonce}_h);
+              & Request(p,s,nsSP,n15(Ns));  Request(p,s,hpTSP,dummy_nonce);
+
